@@ -23,6 +23,8 @@ public class WordleGame {
 
     public static String hintWord(String answer, String secretWord, List<String> dictionary) {
         return dictionary.stream()
+                .filter(word -> word.length() == 5)
+                .filter(word -> !word.equals(answer))
                 .filter(word -> IntStream.range(0, 5)
                         .filter(i -> secretWord.charAt(i) == '-')
                         .allMatch(i -> word.charAt(i) == answer.charAt(i)))

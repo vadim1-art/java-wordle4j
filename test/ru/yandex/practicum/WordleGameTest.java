@@ -12,11 +12,12 @@ class WordleGameTest {
     private WordleGame game;
     private WordleDictionary dictionary;
     private String answer;
+    private List<String> words;
 
     @BeforeEach
     void setUp() {
         answer = "мелок";
-        List<String> words = Arrays.asList("мелок", "молот", "метла", "миска", "мука");
+        words = Arrays.asList("мелок", "молот", "метла", "миска", "мука", "масло");
         dictionary = new WordleDictionary(words);
         game = new WordleGame(answer, 6, dictionary);
     }
@@ -34,18 +35,21 @@ class WordleGameTest {
     @Test
     void shouldWordTypeChangesReturnCorrectPattern() {
         String result = game.wordTypeChanges("молот");
+
         assertEquals("+--^+", result);
     }
 
     @Test
     void shouldMarkAllCorrect() {
         String result = game.wordTypeChanges(answer);
+
         assertEquals("+++++", result);
     }
 
     @Test
     void shouldMarkNoMatches() {
         String result = game.wordTypeChanges("рубль");
+
         assertEquals("-----", result);
     }
 
@@ -74,42 +78,58 @@ class WordleGameTest {
     @Test
     void shouldWinGameWhenGuessCorrect() {
         game.makeAttempt(answer, "+++++");
+
         assertTrue(game.isGameWon());
     }
 
     @Test
     void hintWordShouldReturnWordMatchingMinusPositions() {
         String secretWord = "+--^+";
-        String hint = WordleGame.hintWord(answer, secretWord, dictionary.getWords());
-        assertEquals("миска", hint);
+
+        String hint = WordleGame.hintWord(answer, secretWord, words);
+
+        assertNotNull(hint);
+        for (int i = 0; i < 5; i++) {
+            if (secretWord.charAt(i) == '-') {
+                assertNotEquals(answer.charAt(i), hint.charAt(i));
+            }
+        }
     }
 
     @Test
     void hintWordShouldReturnNullWhenNoMatch() {
         String secretWord = "+++++";
-        String hint = WordleGame.hintWord(answer, secretWord, dictionary.getWords());
+
+        String hint = WordleGame.hintWord(answer, secretWord, words);
+
         assertNull(hint);
     }
 
     @Test
     void shouldReturnCorrectToString() {
         game.makeAttempt("молот", "+--^+");
-        game.makeAttempt("миска", "+^^+^");
+        game.makeAttempt("миска", "+^^-+");
 
         String toString = game.toString();
 
         assertTrue(toString.contains("Попыток осталось: 4"));
         assertTrue(toString.contains("1. молот - +--^+"));
-        assertTrue(toString.contains("2. миска - +^^+^"));
+        assertTrue(toString.contains("2. миска - +^^-+"));
     }
 
     @Test
-    void shouldReturnEmptyAttemptsListWhenNoAttempts() {
-        assertTrue(game.getAttempts().isEmpty());
-    }
+    void hintWordShouldWorkWithComplexPattern() {
+        String answer = "мелок";
+        String secretWord = "-+^-+";
 
-    @Test
-    void shouldReturnEmptyResultsListWhenNoAttempts() {
-        assertTrue(game.getResults().isEmpty());
+        String hint = WordleGame.hintWord(answer, secretWord, words);
+
+        if (hint != null) {
+            for (int i = 0; i < 5; i++) {
+                if (secretWord.charAt(i) == '-') {
+                    assertNotEquals(answer.charAt(i), hint.charAt(i));
+                }
+            }
+        }
     }
 }

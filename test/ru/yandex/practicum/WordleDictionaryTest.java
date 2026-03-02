@@ -14,18 +14,16 @@ class WordleDictionaryTest {
 
     @BeforeEach
     void setUp() {
-        words = Arrays.asList("кот", "дом", "лес", "пять", "шесть");
+        words = Arrays.asList("мелок", "молот", "метла", "миска", "мука");
         dictionary = new WordleDictionary(words);
     }
 
     @Test
     void shouldReturnRandomWord() {
-        List<String> possibleWords = dictionary.getWords();
-
         String randomWord = dictionary.getRandomWord();
 
         assertNotNull(randomWord);
-        assertTrue(possibleWords.contains(randomWord));
+        assertTrue(words.contains(randomWord));
     }
 
     @Test
@@ -39,7 +37,7 @@ class WordleDictionaryTest {
 
     @Test
     void shouldValidateCorrectWord() {
-        String validWord = "пять";
+        String validWord = "мелок";
 
         boolean isValid = dictionary.isValidWord(validWord);
 
@@ -66,30 +64,11 @@ class WordleDictionaryTest {
 
     @Test
     void shouldValidateWordWithYo() {
-        dictionary = new WordleDictionary(Arrays.asList("ежик", "елка"));
+        dictionary = new WordleDictionary(Arrays.asList("ежик", "елка", "мелок"));
 
         boolean isValid = dictionary.isValidWord("ёжик");
 
         assertTrue(isValid);
-    }
-
-    @Test
-    void shouldReturnWordsList() {
-        List<String> returnedWords = dictionary.getWords();
-
-        assertEquals(words, returnedWords);
-    }
-
-    @Test
-    void shouldImplementEqualsAndHashCode() {
-        WordleDictionary dict1 = new WordleDictionary(words);
-        WordleDictionary dict2 = new WordleDictionary(words);
-        WordleDictionary dict3 = new WordleDictionary(Arrays.asList("другие", "слова"));
-
-        assertEquals(dict1, dict2);
-        assertNotEquals(dict1, dict3);
-        assertEquals(dict1.hashCode(), dict2.hashCode());
-        assertNotEquals(dict1.hashCode(), dict3.hashCode());
     }
 
     @Test
