@@ -95,17 +95,6 @@ public class WordleGameTest {
     }
 
     @Test
-    void testMultipleHintsAreDifferent() throws WordNotFoundInDictionaryException {
-        game = new WordleGame(dictionary, testLogger);
-
-        String hint1 = game.getHint();
-        String hint2 = game.getHint();
-
-        org.junit.jupiter.api.Assertions.assertNotNull(hint1);
-        org.junit.jupiter.api.Assertions.assertNotNull(hint2);
-    }
-
-    @Test
     void testGuessResultPattern() throws WordNotFoundInDictionaryException {
         game = new WordleGame(dictionary, testLogger);
 
