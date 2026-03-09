@@ -2,6 +2,7 @@ package ru.yandex.practicum;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import java.io.PrintWriter;
 import java.util.Arrays;
 import java.util.List;
 
@@ -11,11 +12,13 @@ class WordleDictionaryTest {
 
     private WordleDictionary dictionary;
     private List<String> words;
+    private PrintWriter logWriter;
 
     @BeforeEach
     void setUp() {
         words = Arrays.asList("мелок", "молот", "метла", "миска", "мука");
-        dictionary = new WordleDictionary(words);
+        logWriter = new PrintWriter(System.out);
+        dictionary = new WordleDictionary(words, logWriter);
     }
 
     @Test
@@ -28,7 +31,7 @@ class WordleDictionaryTest {
 
     @Test
     void shouldReturnFirstWordWhenRandomFails() {
-        WordleDictionary emptyDict = new WordleDictionary(Arrays.asList("первый"));
+        WordleDictionary emptyDict = new WordleDictionary(Arrays.asList("первый"), logWriter);
 
         String word = emptyDict.getRandomWord();
 
@@ -64,7 +67,7 @@ class WordleDictionaryTest {
 
     @Test
     void shouldValidateWordWithYo() {
-        dictionary = new WordleDictionary(Arrays.asList("ежик", "елка", "мелок"));
+        dictionary = new WordleDictionary(Arrays.asList("ежик", "елка", "мелок"), logWriter);
 
         boolean isValid = dictionary.isValidWord("ёжик");
 
@@ -74,5 +77,12 @@ class WordleDictionaryTest {
     @Test
     void shouldHandleNullInIsValidWord() {
         assertFalse(dictionary.isValidWord(null));
+    }
+
+    @Test
+    void shouldGetWords() {
+        List<String> result = dictionary.getWords();
+
+        assertEquals(words, result);
     }
 }

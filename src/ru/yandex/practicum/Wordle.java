@@ -15,7 +15,7 @@ public class Wordle {
             logWriter = new PrintWriter(new FileWriter("log-file", true));
             log("============ НАЧАЛО ИГРЫ ============");
 
-            dictionary = WordleDictionaryLoader.workingWithFile();
+            dictionary = WordleDictionaryLoader.workingWithFile(logWriter);
         } catch (Exception e) {
             log("Не удалось загрузить словарь: " + e.getMessage());
             logStackTrace(e);

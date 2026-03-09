@@ -2,6 +2,7 @@ package ru.yandex.practicum;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import java.io.PrintWriter;
 import java.util.Arrays;
 import java.util.List;
 
@@ -13,13 +14,15 @@ class WordleGameTest {
     private WordleDictionary dictionary;
     private String answer;
     private List<String> words;
+    private PrintWriter logWriter;
 
     @BeforeEach
     void setUp() {
         answer = "мелок";
         words = Arrays.asList("мелок", "молот", "метла", "миска", "мука", "масло");
-        dictionary = new WordleDictionary(words);
-        game = new WordleGame(answer, 6, dictionary);
+        logWriter = new PrintWriter(System.out);
+        dictionary = new WordleDictionary(words, logWriter);
+        game = new WordleGame(answer, 6, dictionary, logWriter);
     }
 
     @Test

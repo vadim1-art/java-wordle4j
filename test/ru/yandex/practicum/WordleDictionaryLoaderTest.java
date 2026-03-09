@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
@@ -16,10 +17,14 @@ class WordleDictionaryLoaderTest {
     @TempDir
     Path tempDir;
     private Path dictFile;
+    private PrintWriter logWriter;
 
     @BeforeEach
     void setUp() throws IOException {
         dictFile = tempDir.resolve("words_ru.txt");
+        // Создаем PrintWriter для тестов (можно null, но лучше создать)
+        logWriter = new PrintWriter(System.out);
+
         Files.write(dictFile, List.of(
                 "кот", "дом", "лес", "пять",
                 "шесть", "семь", "восемь", "ёжик",
@@ -31,7 +36,7 @@ class WordleDictionaryLoaderTest {
     void shouldLoadValidFiveLetterWords() throws IOException {
         Files.write(dictFile, List.of("пять", "дом", "лес"));
 
-        WordleDictionary dictionary = WordleDictionaryLoader.workingWithFile();
+        WordleDictionary dictionary = WordleDictionaryLoader.workingWithFile(logWriter);
 
         assertNotNull(dictionary);
         assertTrue(dictionary.getWords().contains("пять"));
@@ -44,7 +49,7 @@ class WordleDictionaryLoaderTest {
                 "кот", "дом", "лес", "слово", "пять", "шесть"
         ));
 
-        WordleDictionary dictionary = WordleDictionaryLoader.workingWithFile();
+        WordleDictionary dictionary = WordleDictionaryLoader.workingWithFile(logWriter);
 
         assertEquals(3, dictionary.getWords().size());
         assertTrue(dictionary.getWords().contains("слово"));
@@ -56,7 +61,7 @@ class WordleDictionaryLoaderTest {
     void shouldConvertToLowerCase() throws IOException {
         Files.write(dictFile, List.of("СЛОВО", "ПЯТЬ", "дОм"));
 
-        WordleDictionary dictionary = WordleDictionaryLoader.workingWithFile();
+        WordleDictionary dictionary = WordleDictionaryLoader.workingWithFile(logWriter);
 
         assertTrue(dictionary.getWords().contains("слово"));
         assertTrue(dictionary.getWords().contains("пять"));
@@ -67,7 +72,7 @@ class WordleDictionaryLoaderTest {
     void shouldReplaceYoWithE() throws IOException {
         Files.write(dictFile, List.of("ёжик", "ёлка", "медёк"));
 
-        WordleDictionary dictionary = WordleDictionaryLoader.workingWithFile();
+        WordleDictionary dictionary = WordleDictionaryLoader.workingWithFile(logWriter);
 
         List<String> words = dictionary.getWords();
         assertTrue(words.contains("ежик"));
@@ -79,9 +84,11 @@ class WordleDictionaryLoaderTest {
     @Test
     void shouldThrowExceptionWhenFileNotFound() {
         Path nonExistentFile = tempDir.resolve("nonexistent.txt");
+        // Переименовываем файл, чтобы он не существовал
+        dictFile.toFile().delete();
 
         assertThrows(IOException.class, () ->
-                WordleDictionaryLoader.workingWithFile()
+                WordleDictionaryLoader.workingWithFile(logWriter)
         );
     }
 
@@ -89,7 +96,7 @@ class WordleDictionaryLoaderTest {
     void shouldReturnEmptyDictionaryWhenNoFiveLetterWords() throws IOException {
         Files.write(dictFile, List.of("кот", "дом", "лес"));
 
-        WordleDictionary dictionary = WordleDictionaryLoader.workingWithFile();
+        WordleDictionary dictionary = WordleDictionaryLoader.workingWithFile(logWriter);
 
         assertTrue(dictionary.getWords().isEmpty());
     }
@@ -98,7 +105,7 @@ class WordleDictionaryLoaderTest {
     void shouldTrimWhitespace() throws IOException {
         Files.write(dictFile, List.of("  слово  ", "\tпять\t", "дом"));
 
-        WordleDictionary dictionary = WordleDictionaryLoader.workingWithFile();
+        WordleDictionary dictionary = WordleDictionaryLoader.workingWithFile(logWriter);
 
         assertTrue(dictionary.getWords().contains("слово"));
         assertTrue(dictionary.getWords().contains("пять"));
@@ -109,7 +116,7 @@ class WordleDictionaryLoaderTest {
     void shouldHandleEmptyFile() throws IOException {
         Files.write(dictFile, List.of());
 
-        WordleDictionary dictionary = WordleDictionaryLoader.workingWithFile();
+        WordleDictionary dictionary = WordleDictionaryLoader.workingWithFile(logWriter);
 
         assertTrue(dictionary.getWords().isEmpty());
     }
@@ -118,7 +125,7 @@ class WordleDictionaryLoaderTest {
     void shouldHandleFileWithOnlyInvalidWords() throws IOException {
         Files.write(dictFile, List.of("кот", "дом", "лес"));
 
-        WordleDictionary dictionary = WordleDictionaryLoader.workingWithFile();
+        WordleDictionary dictionary = WordleDictionaryLoader.workingWithFile(logWriter);
 
         assertTrue(dictionary.getWords().isEmpty());
     }
