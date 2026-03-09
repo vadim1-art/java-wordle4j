@@ -146,7 +146,7 @@ public class Wordle {
         System.out.println(game);
 
         if (game.isGameWon()) {
-            System.out.println("Вы угадали слово! 🎉");
+            System.out.println("Вы угадали слово!");
             log("Игра окончена. Победа! Загаданное слово: " + game.getAnswer());
         } else {
             System.out.println("Вы проиграли. Загаданное слово было: '" + game.getAnswer() + "'");

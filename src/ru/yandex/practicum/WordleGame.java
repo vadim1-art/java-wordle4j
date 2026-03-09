@@ -2,17 +2,21 @@ package ru.yandex.practicum;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.IntStream;
+import java.util.Random;
+import java.util.stream.Collectors;
 
 public class WordleGame {
     private String answer;
     private int steps;
     private WordleDictionary dictionary;
     private List<String> attempts;
-    private static List<String> results;
+    private List<String> results;
     private boolean gameWon;
 
-    public WordleGame(String answer, int steps, WordleDictionary dictionary) {
+    public WordleGame(String answer,
+                      int steps,
+                      WordleDictionary dictionary
+    ) {
         this.answer = answer;
         this.steps = steps;
         this.dictionary = dictionary;
@@ -21,15 +25,34 @@ public class WordleGame {
         this.gameWon = false;
     }
 
-    public static String hintWord(String answer, String secretWord, List<String> dictionary) {
-        return dictionary.stream()
-                .filter(word -> word.length() == 5)
-                .filter(word -> !word.equals(answer))
-                .filter(word -> IntStream.range(0, 5)
-                        .filter(i -> secretWord.charAt(i) == '-')
-                        .allMatch(i -> word.charAt(i) == answer.charAt(i)))
-                .findFirst()
-                .orElse(null);
+    public static String hintWord(String answer,
+                                  String pattern,
+                                  List<String> dictionary
+    ) {
+        List<Integer> dashPositions = new ArrayList<>();
+        for (int i = 0; i < pattern.length(); i++) {
+            if (pattern.charAt(i) == '-') {
+                dashPositions.add(i);
+            }
+        }
+
+        System.out.println("Позиции с дефисом: " + dashPositions);
+
+        List<String> result = new ArrayList<>();
+
+        for (int position : dashPositions) {
+            char letter = answer.charAt(position);
+
+            List<String> wordsForPosition = dictionary.stream()
+                    .filter(word -> word.charAt(position) == letter)
+                    .filter(word -> !result.contains(word))
+                    .collect(Collectors.toList());
+
+            result.addAll(wordsForPosition);
+        }
+
+        int randomIndex = new Random().nextInt(result.size());
+        return result.get(randomIndex);
     }
 
     public String wordTypeChanges(String word) {
