@@ -35,7 +35,7 @@ public class WordleDictionaryLoader {
                 log(logWriter, "ПРЕДУПРЕЖДЕНИЕ: В словаре нет слов длиной 5 букв");
             }
 
-            return new WordleDictionary(words, logWriter);
+            return new WordleDictionary(words);
         }
     }
 

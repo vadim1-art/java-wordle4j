@@ -1,5 +1,6 @@
 package ru.yandex.practicum;
 
+import java.io.PrintWriter;
 import java.util.*;
 
 public class WordleDictionary {
@@ -12,13 +13,21 @@ public class WordleDictionary {
         this.wordSet = new HashSet<>(words);
     }
 
+    public WordleDictionary(List<String> words, PrintWriter logWriter) {
+        this(words);
+        // logWriter может использоваться для логирования, если нужно
+    }
+
     public String getRandomWord() {
         try {
+            if (words.isEmpty()) {
+                return null;
+            }
             int randomIndex = random.nextInt(words.size());
             return words.get(randomIndex);
         } catch (Exception e) {
             Wordle.log("Ошибка при получении случайного слова: " + e.getMessage());
-            return words.get(0);
+            return words.isEmpty() ? null : words.get(0);
         }
     }
 

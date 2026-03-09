@@ -1,5 +1,6 @@
 package ru.yandex.practicum;
 
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
@@ -25,6 +26,15 @@ public class WordleGame {
         this.gameWon = false;
     }
 
+    public WordleGame(String answer,
+                      int steps,
+                      WordleDictionary dictionary,
+                      PrintWriter logWriter
+    ) {
+        this(answer, steps, dictionary);
+        // logWriter может использоваться для логирования, если нужно
+    }
+
     public static String hintWord(String answer,
                                   String pattern,
                                   List<String> dictionary
@@ -34,6 +44,10 @@ public class WordleGame {
             if (pattern.charAt(i) == '-') {
                 dashPositions.add(i);
             }
+        }
+
+        if (dashPositions.isEmpty()) {
+            return null;
         }
 
         System.out.println("Позиции с дефисом: " + dashPositions);
@@ -49,6 +63,10 @@ public class WordleGame {
                     .collect(Collectors.toList());
 
             result.addAll(wordsForPosition);
+        }
+
+        if (result.isEmpty()) {
+            return null;
         }
 
         int randomIndex = new Random().nextInt(result.size());
