@@ -2,87 +2,147 @@ package ru.yandex.practicum;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import java.io.PrintWriter;
+
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
-import static org.junit.jupiter.api.Assertions.*;
-
-class WordleDictionaryTest {
+public class WordleDictionaryTest {
 
     private WordleDictionary dictionary;
-    private List<String> words;
-    private PrintWriter logWriter;
+    private List<String> testWords;
 
     @BeforeEach
     void setUp() {
-        words = Arrays.asList("мелок", "молот", "метла", "миска", "мука");
-        logWriter = new PrintWriter(System.out);
-        dictionary = new WordleDictionary(words, logWriter);
+        testWords = Arrays.asList(
+                "герой", "книга", "столб", "трава", "молот",
+                "город", "берег", "ветер", "солод", "полет"
+        );
+        dictionary = new WordleDictionary(testWords);
     }
 
     @Test
-    void shouldReturnRandomWord() {
+    void testDictionarySize() {
+        org.junit.jupiter.api.Assertions.assertEquals(testWords.size(), dictionary.size());
+    }
+
+    @Test
+    void testGetWords() {
+        List<String> words = dictionary.getWords();
+
+        org.junit.jupiter.api.Assertions.assertEquals(testWords.size(), words.size());
+        org.junit.jupiter.api.Assertions.assertTrue(words.containsAll(testWords));
+    }
+
+    @Test
+    void testContains() {
+        org.junit.jupiter.api.Assertions.assertTrue(dictionary.contains("герой"));
+        org.junit.jupiter.api.Assertions.assertTrue(dictionary.contains("книга"));
+        org.junit.jupiter.api.Assertions.assertFalse(dictionary.contains("абвгд"));
+        org.junit.jupiter.api.Assertions.assertFalse(dictionary.contains("несуществующее"));
+    }
+
+    @Test
+    void testGetRandomWord() {
         String randomWord = dictionary.getRandomWord();
 
-        assertNotNull(randomWord);
-        assertTrue(words.contains(randomWord));
+        org.junit.jupiter.api.Assertions.assertNotNull(randomWord);
+        org.junit.jupiter.api.Assertions.assertTrue(dictionary.contains(randomWord));
+        org.junit.jupiter.api.Assertions.assertEquals(5, randomWord.length());
     }
 
     @Test
-    void shouldReturnFirstWordWhenRandomFails() {
-        WordleDictionary emptyDict = new WordleDictionary(Arrays.asList("первый"), logWriter);
+    void testGetRandomWordFromEmptyDictionary() {
+        WordleDictionary emptyDictionary = new WordleDictionary(Arrays.asList());
 
-        String word = emptyDict.getRandomWord();
-
-        assertEquals("первый", word);
+        org.junit.jupiter.api.Assertions.assertThrows(IllegalStateException.class, () -> {
+            emptyDictionary.getRandomWord();
+        });
     }
 
     @Test
-    void shouldValidateCorrectWord() {
-        String validWord = "мелок";
+    void testFilterWords() {
+        Set<Character> correctLetters = new HashSet<>();
+        Set<Character> presentLetters = new HashSet<>();
+        Set<Character> absentLetters = new HashSet<>();
+        List<String> guessedWords = Arrays.asList("г????", "?е???");
 
-        boolean isValid = dictionary.isValidWord(validWord);
+        correctLetters.add('г');
+        presentLetters.add('е');
 
-        assertTrue(isValid);
+        List<String> filtered = dictionary.filterWords(correctLetters, presentLetters, absentLetters, guessedWords);
+
+        org.junit.jupiter.api.Assertions.assertNotNull(filtered);
     }
 
     @Test
-    void shouldRejectInvalidWord() {
-        String invalidWord = "несуществующее";
+    void testFilterByAbsentLetters() {
+        Set<Character> correctLetters = new HashSet<>();
+        Set<Character> presentLetters = new HashSet<>();
+        Set<Character> absentLetters = new HashSet<>();
+        absentLetters.add('х');
+        absentLetters.add('ц');
 
-        boolean isValid = dictionary.isValidWord(invalidWord);
+        List<String> filtered = dictionary.filterWords(correctLetters, presentLetters, absentLetters, Arrays.asList());
 
-        assertFalse(isValid);
+        for (String word : filtered) {
+            for (char c : absentLetters) {
+                org.junit.jupiter.api.Assertions.assertFalse(word.contains(String.valueOf(c)));
+            }
+        }
     }
 
     @Test
-    void shouldRejectWordWithWrongLength() {
-        String tooShort = "дом";
-        String tooLong = "длинное";
+    void testFilterByPresentLetters() {
+        Set<Character> correctLetters = new HashSet<>();
+        Set<Character> presentLetters = new HashSet<>();
+        presentLetters.add('г');
+        presentLetters.add('р');
 
-        assertFalse(dictionary.isValidWord(tooShort));
-        assertFalse(dictionary.isValidWord(tooLong));
+        Set<Character> absentLetters = new HashSet<>();
+
+        List<String> filtered = dictionary.filterWords(correctLetters, presentLetters, absentLetters, Arrays.asList());
+
+        for (String word : filtered) {
+            for (char c : presentLetters) {
+                org.junit.jupiter.api.Assertions.assertTrue(word.contains(String.valueOf(c)));
+            }
+        }
     }
 
     @Test
-    void shouldValidateWordWithYo() {
-        dictionary = new WordleDictionary(Arrays.asList("ежик", "елка", "мелок"), logWriter);
+    void testGeneratePattern() {
+        String pattern1 = WordleDictionary.generatePattern("гонец", "герой");
+        org.junit.jupiter.api.Assertions.assertEquals(5, pattern1.length());
 
-        boolean isValid = dictionary.isValidWord("ёжик");
+        String pattern2 = WordleDictionary.generatePattern("герой", "герой");
+        org.junit.jupiter.api.Assertions.assertEquals("+++++", pattern2);
 
-        assertTrue(isValid);
+        String pattern3 = WordleDictionary.generatePattern("ааааа", "ббббб");
+        org.junit.jupiter.api.Assertions.assertEquals("-----", pattern3);
     }
 
     @Test
-    void shouldHandleNullInIsValidWord() {
-        assertFalse(dictionary.isValidWord(null));
+    void testGeneratePatternSpecific() {
+        String pattern = WordleDictionary.generatePattern("книга", "гиган");
+        org.junit.jupiter.api.Assertions.assertNotNull(pattern);
     }
 
     @Test
-    void shouldGetWords() {
-        List<String> result = dictionary.getWords();
+    void testNormalizeWord() {
+        org.junit.jupiter.api.Assertions.assertEquals("герой", WordleDictionary.normalizeWord("Герой"));
+        org.junit.jupiter.api.Assertions.assertEquals("герой", WordleDictionary.normalizeWord("ГЕРОЙ"));
+        org.junit.jupiter.api.Assertions.assertEquals("ежик", WordleDictionary.normalizeWord("ёжик"));
+        org.junit.jupiter.api.Assertions.assertEquals("ежик", WordleDictionary.normalizeWord("Ёжик"));
+        org.junit.jupiter.api.Assertions.assertEquals("клен", WordleDictionary.normalizeWord("Клён"));
+        org.junit.jupiter.api.Assertions.assertEquals("клен", WordleDictionary.normalizeWord("клен"));
+    }
 
-        assertEquals(words, result);
+    @Test
+    void testNormalizeWordWithMixedCase() {
+        org.junit.jupiter.api.Assertions.assertEquals("берег", WordleDictionary.normalizeWord("Берег"));
+        org.junit.jupiter.api.Assertions.assertEquals("берег", WordleDictionary.normalizeWord("БЕРЕГ"));
+        org.junit.jupiter.api.Assertions.assertEquals("берег", WordleDictionary.normalizeWord("берег"));
     }
 }

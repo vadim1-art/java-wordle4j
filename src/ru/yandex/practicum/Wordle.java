@@ -1,156 +1,126 @@
 package ru.yandex.practicum;
 
 import java.io.FileWriter;
+import java.io.IOException;
 import java.io.PrintWriter;
-import java.io.StringWriter;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Scanner;
+
 
 public class Wordle {
 
-    private static WordleDictionary dictionary;
-    private static PrintWriter logWriter;
-
-    static {
-        try {
-            logWriter = new PrintWriter(new FileWriter("log-file", true));
-            log("============ НАЧАЛО ИГРЫ ============");
-
-            dictionary = WordleDictionaryLoader.workingWithFile(logWriter);
-        } catch (Exception e) {
-            log("Не удалось загрузить словарь: " + e.getMessage());
-            logStackTrace(e);
-            System.out.println("Извините, произошла внутренняя ошибка при запуске игры.");
-            System.out.println("Пожалуйста, обратитесь к администратору.");
-            System.exit(1);
-        }
-    }
-
-    public static void log(String message) {
-        if (logWriter != null) {
-            logWriter.println(message);
-            logWriter.flush();
-        }
-    }
-
-    public static void logStackTrace(Exception e) {
-        if (logWriter != null) {
-            StringWriter sw = new StringWriter();
-            PrintWriter pw = new PrintWriter(sw);
-            e.printStackTrace(pw);
-            log("СТЕК ТРЕЙС:");
-            log(sw.toString());
-        }
-    }
+    private static final String DICTIONARY_FILE = "words_ru.txt";
+    private static final String LOG_FILE = "log-file.txt";
+    private static PrintWriter logger;
 
     public static void main(String[] args) {
-        Scanner scanner = new Scanner(System.in);
-
-        System.out.println("Добро пожаловать в игру Wordle!");
-        System.out.println("Угадайте слово из 5 букв.");
-        System.out.println("У вас есть 6 попыток.");
-        System.out.println("(+) - буква на месте, (^) - буква есть, но не на месте, (-) - буквы нет");
-        System.out.println("(hint/подсказка) - введите 'hint' для получения подсказки");
-        System.out.println();
-
         try {
-            playGame(scanner);
+            initializeLogger();
+
+            logger.println("=== Запуск игры Wordle ===");
+            logger.println("Время запуска: " + LocalDateTime.now().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME));
+
+            Path dictPath = Paths.get(DICTIONARY_FILE);
+            if (!Files.exists(dictPath)) {
+                throw new GameInitializationException("Файл словаря не найден: " + DICTIONARY_FILE);
+            }
+
+            WordleDictionaryLoader loader = new WordleDictionaryLoader(logger);
+            WordleDictionary dictionary = loader.loadDictionary(DICTIONARY_FILE);
+
+            logger.println("Словарь загружен. Всего слов: " + dictionary.size());
+
+            WordleGame game = new WordleGame(dictionary, logger);
+
+            playGame(game);
+
+        } catch (GameInitializationException e) {
+            System.err.println("Ошибка инициализации игры: " + e.getMessage());
+            if (logger != null) {
+                logger.println("КРИТИЧЕСКАЯ ОШИБКА: " + e.getMessage());
+                e.printStackTrace(logger);
+            }
         } catch (Exception e) {
-            log("Непредвиденная ошибка в игровом процессе: " + e.getMessage());
-            logStackTrace(e);
-            System.out.println("Извините, произошла внутренняя ошибка. Игра будет закрыта.");
-        }
-
-        scanner.close();
-        log("========== КОНЕЦ ИГРЫ ==========");
-        if (logWriter != null) {
-            logWriter.close();
+            System.err.println("Непредвиденная ошибка: " + e.getMessage());
+            if (logger != null) {
+                logger.println("НЕПРЕДВИДЕННАЯ ОШИБКА: " + e.getMessage());
+                e.printStackTrace(logger);
+            }
+        } finally {
+            if (logger != null) {
+                logger.println("=== Завершение игры ===");
+                logger.close();
+            }
         }
     }
 
-    private static void playGame(Scanner scanner) {
-        String targetWord = dictionary.getRandomWord();
-        WordleGame game = new WordleGame(targetWord, 6, dictionary);
-        log("Новая игра. Загадано слово: " + targetWord);
+    private static void initializeLogger() throws IOException {
+        FileWriter fileWriter = new FileWriter(LOG_FILE, true);
+        logger = new PrintWriter(fileWriter, true);
+    }
 
-        while (game.getSteps() > 0 && !game.isGameWon()) {
-            System.out.println(game);
-            System.out.print("Введите слово (осталось попыток: " + game.getSteps() + "): ");
+    private static void playGame(WordleGame game) {
+        try (Scanner scanner = new Scanner(System.in)) {
+            System.out.println("Добро пожаловать в игру Wordle!");
+            System.out.println("Отгадайте слово из 5 букв. У вас " + game.getStepsLeft() + " попыток.");
+            System.out.println("Если нужна подсказка, нажмите Enter (пустая строка)");
 
-            String input = scanner.nextLine().trim().toLowerCase();
+            while (!game.isGameOver()) {
+                System.out.print("\nВведите слово: ");
+                String input = scanner.nextLine().trim().toLowerCase();
 
-            if (input.equals("hint") || input.equals("подсказка")) {
-                handleHintCommand(game);
-                continue;
-            } else if (input.equals("exit") || input.equals("выход")) {
-                System.out.println("Игра прервана. Загаданное слово было: '" + targetWord + "'");
-                log("Игрок прервал игру. Загаданное слово: " + targetWord);
-                break;
-            }
+                try {
+                    if (input.isEmpty()) {
+                        String hint = game.getHint();
+                        if (hint != null) {
+                            System.out.println("Подсказка: попробуйте слово \"" + hint + "\"");
+                        } else {
+                            System.out.println("Нет доступных подсказок");
+                        }
+                        continue;
+                    }
 
-            try {
-                if (!dictionary.isValidWord(input)) {
-                    System.out.println("Некорректное слово. Слово должно состоять из 5 букв и быть в словаре.");
-                    log("Игрок ввел некорректное слово: " + input);
-                    continue;
+                    if (input.length() != 5) {
+                        throw new InvalidWordLengthException("Слово должно состоять из 5 букв");
+                    }
+
+                    if (!input.matches("[а-яё]+")) {
+                        throw new InvalidCharactersException("Слово должно содержать только русские буквы");
+                    }
+
+                    WordleGame.GuessResult result = game.makeGuess(input);
+
+                    System.out.println(input);
+                    System.out.println(result.getPattern());
+
+                    if (result.isGameWon()) {
+                        System.out.println("\nПоздравляю! Вы отгадали слово \"" + game.getAnswer() + "\"!");
+                        System.out.println("Количество попыток: " + (6 - game.getStepsLeft()));
+                        break;
+                    } else if (game.getStepsLeft() == 0) {
+                        System.out.println("\nК сожалению, попытки закончились. Загаданное слово: \"" + game.getAnswer() + "\"");
+                        break;
+                    }
+
+                    System.out.println("Осталось попыток: " + game.getStepsLeft());
+
+                } catch (WordNotFoundInDictionaryException e) {
+                    System.out.println("Ошибка: такого слова нет в словаре. Попробуйте другое слово.");
+                } catch (InvalidWordLengthException | InvalidCharactersException e) {
+                    System.out.println("Ошибка: " + e.getMessage());
+                } catch (Exception e) {
+                    System.out.println("Произошла ошибка при обработке слова");
+                    logger.println("Ошибка при обработке ввода пользователя: " + e.getMessage());
                 }
-
-                String result = game.wordTypeChanges(input);
-                log("Попытка: " + input + " -> " + result);
-                game.makeAttempt(input, result);
-
-            } catch (Exception e) {
-                log("Ошибка при обработке слова '" + input + "': " + e.getMessage());
-                logStackTrace(e);
-                System.out.println("Произошла внутренняя ошибка при проверке слова. Попробуйте другое слово.");
             }
-        }
 
-        printGameResult(game);
-
-        System.out.print("\nХотите сыграть еще? (да/нет): ");
-        String answer = scanner.nextLine().trim().toLowerCase();
-        if (answer.equals("да") || answer.equals("yes") || answer.equals("y") || answer.equals("lf")) {
-            System.out.println();
-            playGame(scanner);
-        } else {
-            System.out.println("Спасибо за игру!");
-            log("Игрок завершил игру");
-        }
-    }
-
-    private static void handleHintCommand(WordleGame game) {
-        if (game.getResults().isEmpty()) {
-            System.out.println("Сделайте хотя бы одну попытку, чтобы получить подсказку!");
-            log("Игрок запросил подсказку, но попыток еще не было");
-            return;
-        }
-
-        String lastResult = game.getResults().get(game.getResults().size() - 1);
-        String lastAttempt = game.getAttempts().get(game.getAttempts().size() - 1);
-
-        String hint = WordleGame.hintWord(game.getAnswer(), lastResult, dictionary.getWords());
-
-        if (hint != null && !hint.isEmpty()) {
-            System.out.println("\nПопробуйте слово \"" + hint + "\"");
-            System.out.println("   (основано на вашей последней попытке: " + lastAttempt + " -> " + lastResult + ")\n");
-            log("Игрок запросил подсказку. Последний результат: " + lastResult + ", предложено: " + hint);
-        } else {
-            System.out.println("\nК сожалению, не удалось найти подходящую подсказку.");
-            System.out.println("   Продолжайте угадывать самостоятельно!\n");
-            log("Игрок запросил подсказку, но подходящих слов не найдено. Последний результат: " + lastResult);
-        }
-    }
-
-    private static void printGameResult(WordleGame game) {
-        System.out.println("\n=== ИГРА ОКОНЧЕНА ===");
-        System.out.println(game);
-
-        if (game.isGameWon()) {
-            System.out.println("Вы угадали слово!");
-            log("Игра окончена. Победа! Загаданное слово: " + game.getAnswer());
-        } else {
-            System.out.println("Вы проиграли. Загаданное слово было: '" + game.getAnswer() + "'");
-            log("Игра окончена. Поражение. Загаданное слово: " + game.getAnswer());
+            if (game.isGameOver() && !game.isGameWon()) {
+                System.out.println("\nИгра окончена. Загаданное слово: \"" + game.getAnswer() + "\"");
+            }
         }
     }
 }

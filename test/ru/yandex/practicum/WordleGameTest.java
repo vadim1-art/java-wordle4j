@@ -2,137 +2,115 @@ package ru.yandex.practicum;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
 import java.io.PrintWriter;
 import java.util.Arrays;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
+public class WordleGameTest {
 
-class WordleGameTest {
-
-    private WordleGame game;
     private WordleDictionary dictionary;
-    private String answer;
-    private List<String> words;
-    private PrintWriter logWriter;
+    private WordleGame game;
+    private PrintWriter testLogger;
 
     @BeforeEach
     void setUp() {
-        answer = "мелок";
-        words = Arrays.asList("мелок", "молот", "метла", "миска", "мука", "масло");
-        logWriter = new PrintWriter(System.out);
-        dictionary = new WordleDictionary(words, logWriter);
-        game = new WordleGame(answer, 6, dictionary, logWriter);
-    }
+        testLogger = new PrintWriter(System.out, true);
 
-    @Test
-    void shouldCreateGameWithCorrectInitialState() {
-        assertEquals(answer, game.getAnswer());
-        assertEquals(6, game.getSteps());
-        assertEquals(dictionary, game.getDictionary());
-        assertFalse(game.isGameWon());
-        assertTrue(game.getAttempts().isEmpty());
-        assertTrue(game.getResults().isEmpty());
-    }
-
-    @Test
-    void shouldWordTypeChangesReturnCorrectPattern() {
-        String result = game.wordTypeChanges("молот");
-
-        assertEquals("+--^+", result);
-    }
-
-    @Test
-    void shouldMarkAllCorrect() {
-        String result = game.wordTypeChanges(answer);
-
-        assertEquals("+++++", result);
-    }
-
-    @Test
-    void shouldMarkNoMatches() {
-        String result = game.wordTypeChanges("рубль");
-
-        assertEquals("-----", result);
-    }
-
-    @Test
-    void shouldThrowExceptionOnWrongLength() {
-        assertThrows(IllegalArgumentException.class, () ->
-                game.wordTypeChanges("дом")
+        List<String> testWords = Arrays.asList(
+                "герой", "книга", "столб", "трава", "молот",
+                "город", "берег", "ветер", "солод", "полет",
+                "кошка", "собака", "мышка", "птица"
         );
+        dictionary = new WordleDictionary(testWords);
     }
 
     @Test
-    void shouldMakeAttemptAndUpdateState() {
-        String word = "молот";
-        String result = "+--^+";
+    void testWordleGameInitialization() {
+        game = new WordleGame(dictionary, testLogger);
 
-        game.makeAttempt(word, result);
-
-        assertEquals(5, game.getSteps());
-        assertEquals(1, game.getAttempts().size());
-        assertEquals(1, game.getResults().size());
-        assertEquals(word, game.getAttempts().get(0));
-        assertEquals(result, game.getResults().get(0));
-        assertFalse(game.isGameWon());
+        org.junit.jupiter.api.Assertions.assertNotNull(game);
+        org.junit.jupiter.api.Assertions.assertEquals(6, game.getStepsLeft());
+        org.junit.jupiter.api.Assertions.assertFalse(game.isGameOver());
+        org.junit.jupiter.api.Assertions.assertFalse(game.isGameWon());
+        org.junit.jupiter.api.Assertions.assertNotNull(game.getAnswer());
+        org.junit.jupiter.api.Assertions.assertEquals(5, game.getAnswer().length());
     }
 
     @Test
-    void shouldWinGameWhenGuessCorrect() {
-        game.makeAttempt(answer, "+++++");
+    void testMakeGuessWithValidWord() throws WordNotFoundInDictionaryException {
+        game = new WordleGame(dictionary, testLogger);
+        String answer = game.getAnswer();
 
-        assertTrue(game.isGameWon());
+        WordleGame.GuessResult result = game.makeGuess(answer);
+
+        org.junit.jupiter.api.Assertions.assertNotNull(result);
+        org.junit.jupiter.api.Assertions.assertEquals("+++++", result.getPattern());
+        org.junit.jupiter.api.Assertions.assertTrue(result.isGameWon());
+        org.junit.jupiter.api.Assertions.assertTrue(game.isGameWon());
+        org.junit.jupiter.api.Assertions.assertTrue(game.isGameOver());
     }
 
     @Test
-    void hintWordShouldReturnWordMatchingMinusPositions() {
-        String secretWord = "+--^+";
+    void testMakeGuessWithInvalidWord() {
+        game = new WordleGame(dictionary, testLogger);
 
-        String hint = WordleGame.hintWord(answer, secretWord, words);
+        org.junit.jupiter.api.Assertions.assertThrows(WordNotFoundInDictionaryException.class, () -> {
+            game.makeGuess("абвгд");
+        });
+    }
 
-        assertNotNull(hint);
-        for (int i = 0; i < 5; i++) {
-            if (secretWord.charAt(i) == '-') {
-                assertNotEquals(answer.charAt(i), hint.charAt(i));
-            }
+    @Test
+    void testStepsDecrement() throws WordNotFoundInDictionaryException {
+        game = new WordleGame(dictionary, testLogger);
+        int initialSteps = game.getStepsLeft();
+
+        game.makeGuess("герой");
+
+        org.junit.jupiter.api.Assertions.assertEquals(initialSteps - 1, game.getStepsLeft());
+    }
+
+    @Test
+    void testGameOverAfterSixGuesses() throws WordNotFoundInDictionaryException {
+        game = new WordleGame(dictionary, testLogger);
+
+        for (int i = 0; i < 6; i++) {
+            org.junit.jupiter.api.Assertions.assertFalse(game.isGameOver());
+            game.makeGuess("герой");
         }
+
+        org.junit.jupiter.api.Assertions.assertTrue(game.isGameOver());
+        org.junit.jupiter.api.Assertions.assertEquals(0, game.getStepsLeft());
     }
 
     @Test
-    void hintWordShouldReturnNullWhenNoMatch() {
-        String secretWord = "+++++";
+    void testGetHint() {
+        game = new WordleGame(dictionary, testLogger);
 
-        String hint = WordleGame.hintWord(answer, secretWord, words);
+        String hint = game.getHint();
 
-        assertNull(hint);
+        org.junit.jupiter.api.Assertions.assertNotNull(hint);
+        org.junit.jupiter.api.Assertions.assertEquals(5, hint.length());
+        org.junit.jupiter.api.Assertions.assertTrue(dictionary.contains(hint));
     }
 
     @Test
-    void shouldReturnCorrectToString() {
-        game.makeAttempt("молот", "+--^+");
-        game.makeAttempt("миска", "+^^-+");
+    void testGuessResultPattern() throws WordNotFoundInDictionaryException {
+        game = new WordleGame(dictionary, testLogger);
 
-        String toString = game.toString();
+        WordleGame.GuessResult result = game.makeGuess("герой");
 
-        assertTrue(toString.contains("Попыток осталось: 4"));
-        assertTrue(toString.contains("1. молот - +--^+"));
-        assertTrue(toString.contains("2. миска - +^^-+"));
+        org.junit.jupiter.api.Assertions.assertNotNull(result.getPattern());
+        org.junit.jupiter.api.Assertions.assertEquals(5, result.getPattern().length());
     }
 
     @Test
-    void hintWordShouldWorkWithComplexPattern() {
-        String answer = "мелок";
-        String secretWord = "-+^-+";
+    void testLetterSetsUpdate() throws WordNotFoundInDictionaryException {
+        game = new WordleGame(dictionary, testLogger);
 
-        String hint = WordleGame.hintWord(answer, secretWord, words);
+        game.makeGuess("герой");
 
-        if (hint != null) {
-            for (int i = 0; i < 5; i++) {
-                if (secretWord.charAt(i) == '-') {
-                    assertNotEquals(answer.charAt(i), hint.charAt(i));
-                }
-            }
-        }
+        String hint = game.getHint();
+        org.junit.jupiter.api.Assertions.assertNotNull(hint);
     }
 }

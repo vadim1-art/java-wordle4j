@@ -4,129 +4,145 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
-import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
+public class WordleDictionaryLoaderTest {
 
-class WordleDictionaryLoaderTest {
-
-    @TempDir
-    Path tempDir;
-    private Path dictFile;
-    private PrintWriter logWriter;
+    private PrintWriter testLogger;
+    private WordleDictionaryLoader loader;
 
     @BeforeEach
-    void setUp() throws IOException {
-        dictFile = tempDir.resolve("words_ru.txt");
-        // Создаем PrintWriter для тестов (можно null, но лучше создать)
-        logWriter = new PrintWriter(System.out);
-
-        Files.write(dictFile, List.of(
-                "кот", "дом", "лес", "пять",
-                "шесть", "семь", "восемь", "ёжик",
-                "СЛОВО", "  пробел  "
-        ));
+    void setUp() {
+        testLogger = new PrintWriter(System.out, true);
+        loader = new WordleDictionaryLoader(testLogger);
     }
 
     @Test
-    void shouldLoadValidFiveLetterWords() throws IOException {
-        Files.write(dictFile, List.of("пять", "дом", "лес"));
+    void testLoadDictionaryFromFile(@TempDir Path tempDir) throws IOException {
+        Path dictFile = tempDir.resolve("test_dict.txt");
 
-        WordleDictionary dictionary = WordleDictionaryLoader.workingWithFile(logWriter);
+        try (FileWriter writer = new FileWriter(dictFile.toFile())) {
+            writer.write("герой\n");
+            writer.write("книга\n");
+            writer.write("столб\n");
+            writer.write("трава\n");
+            writer.write("молот\n");
+            writer.write("длинноеслово\n");
+            writer.write("кот\n");
+        }
 
-        assertNotNull(dictionary);
-        assertTrue(dictionary.getWords().contains("пять"));
-        assertEquals(1, dictionary.getWords().size());
+        WordleDictionary dictionary = loader.loadDictionary(dictFile.toString());
+
+        org.junit.jupiter.api.Assertions.assertNotNull(dictionary);
+        org.junit.jupiter.api.Assertions.assertEquals(5, dictionary.size());
+        org.junit.jupiter.api.Assertions.assertTrue(dictionary.contains("герой"));
+        org.junit.jupiter.api.Assertions.assertTrue(dictionary.contains("книга"));
+        org.junit.jupiter.api.Assertions.assertFalse(dictionary.contains("длинноеслово"));
+        org.junit.jupiter.api.Assertions.assertFalse(dictionary.contains("кот"));
     }
 
     @Test
-    void shouldFilterOnlyFiveLetterWords() throws IOException {
-        Files.write(dictFile, List.of(
-                "кот", "дом", "лес", "слово", "пять", "шесть"
-        ));
+    void testLoadDictionaryWithEyoReplacement(@TempDir Path tempDir) throws IOException {
+        Path dictFile = tempDir.resolve("test_dict_eyo.txt");
 
-        WordleDictionary dictionary = WordleDictionaryLoader.workingWithFile(logWriter);
+        try (FileWriter writer = new FileWriter(dictFile.toFile())) {
+            writer.write("ёжик\n");
+            writer.write("клён\n");
+            writer.write("берёза\n");
+            writer.write("елка\n");
+        }
 
-        assertEquals(3, dictionary.getWords().size());
-        assertTrue(dictionary.getWords().contains("слово"));
-        assertTrue(dictionary.getWords().contains("пять"));
-        assertTrue(dictionary.getWords().contains("шесть"));
+        WordleDictionary dictionary = loader.loadDictionary(dictFile.toString());
+
+        org.junit.jupiter.api.Assertions.assertNotNull(dictionary);
+
+        org.junit.jupiter.api.Assertions.assertTrue(dictionary.contains("ежик"));
+        org.junit.jupiter.api.Assertions.assertTrue(dictionary.contains("клен"));
+        org.junit.jupiter.api.Assertions.assertTrue(dictionary.contains("елка"));
+
+        org.junit.jupiter.api.Assertions.assertFalse(dictionary.contains("береза"));
     }
 
     @Test
-    void shouldConvertToLowerCase() throws IOException {
-        Files.write(dictFile, List.of("СЛОВО", "ПЯТЬ", "дОм"));
+    void testLoadDictionaryWithUppercase(@TempDir Path tempDir) throws IOException {
+        Path dictFile = tempDir.resolve("test_dict_uppercase.txt");
 
-        WordleDictionary dictionary = WordleDictionaryLoader.workingWithFile(logWriter);
+        try (FileWriter writer = new FileWriter(dictFile.toFile())) {
+            writer.write("ГЕРОЙ\n");
+            writer.write("Книга\n");
+            writer.write("СтОлБ\n");
+        }
 
-        assertTrue(dictionary.getWords().contains("слово"));
-        assertTrue(dictionary.getWords().contains("пять"));
-        assertTrue(dictionary.getWords().contains("дом"));
+        WordleDictionary dictionary = loader.loadDictionary(dictFile.toString());
+
+        org.junit.jupiter.api.Assertions.assertNotNull(dictionary);
+        org.junit.jupiter.api.Assertions.assertTrue(dictionary.contains("герой"));
+        org.junit.jupiter.api.Assertions.assertTrue(dictionary.contains("книга"));
+        org.junit.jupiter.api.Assertions.assertTrue(dictionary.contains("столб"));
     }
 
     @Test
-    void shouldReplaceYoWithE() throws IOException {
-        Files.write(dictFile, List.of("ёжик", "ёлка", "медёк"));
+    void testLoadDictionaryWithInvalidLengthWords(@TempDir Path tempDir) throws IOException {
+        Path dictFile = tempDir.resolve("test_dict_invalid.txt");
 
-        WordleDictionary dictionary = WordleDictionaryLoader.workingWithFile(logWriter);
+        try (FileWriter writer = new FileWriter(dictFile.toFile())) {
+            writer.write("герой\n");
+            writer.write("кот\n");
+            writer.write("столб\n");
+            writer.write("оченьдлинноеслово\n");
+        }
 
-        List<String> words = dictionary.getWords();
-        assertTrue(words.contains("ежик"));
-        assertTrue(words.contains("елка"));
-        assertTrue(words.contains("медек"));
-        assertFalse(words.contains("ёжик"));
+        WordleDictionary dictionary = loader.loadDictionary(dictFile.toString());
+
+        org.junit.jupiter.api.Assertions.assertNotNull(dictionary);
+        org.junit.jupiter.api.Assertions.assertEquals(2, dictionary.size());
+        org.junit.jupiter.api.Assertions.assertTrue(dictionary.contains("герой"));
+        org.junit.jupiter.api.Assertions.assertTrue(dictionary.contains("столб"));
+        org.junit.jupiter.api.Assertions.assertFalse(dictionary.contains("кот"));
     }
 
     @Test
-    void shouldThrowExceptionWhenFileNotFound() {
-        Path nonExistentFile = tempDir.resolve("nonexistent.txt");
-        // Переименовываем файл, чтобы он не существовал
-        dictFile.toFile().delete();
+    void testLoadEmptyDictionary(@TempDir Path tempDir) {
+        Path dictFile = tempDir.resolve("empty_dict.txt");
 
-        assertThrows(IOException.class, () ->
-                WordleDictionaryLoader.workingWithFile(logWriter)
-        );
+
+        org.junit.jupiter.api.Assertions.assertThrows(EmptyDictionaryException.class, () -> {
+            try (FileWriter writer = new FileWriter(dictFile.toFile())) {
+            }
+            loader.loadDictionary(dictFile.toString());
+        });
     }
 
     @Test
-    void shouldReturnEmptyDictionaryWhenNoFiveLetterWords() throws IOException {
-        Files.write(dictFile, List.of("кот", "дом", "лес"));
+    void testLoadNonexistentFile() {
+        String nonExistentFile = "несуществующий_файл.txt";
 
-        WordleDictionary dictionary = WordleDictionaryLoader.workingWithFile(logWriter);
-
-        assertTrue(dictionary.getWords().isEmpty());
+        org.junit.jupiter.api.Assertions.assertThrows(IOException.class, () -> {
+            loader.loadDictionary(nonExistentFile);
+        });
     }
 
     @Test
-    void shouldTrimWhitespace() throws IOException {
-        Files.write(dictFile, List.of("  слово  ", "\tпять\t", "дом"));
+    void testLoadDictionaryWithSpecialCharacters(@TempDir Path tempDir) throws IOException {
+        Path dictFile = tempDir.resolve("test_dict_special.txt");
 
-        WordleDictionary dictionary = WordleDictionaryLoader.workingWithFile(logWriter);
+        try (FileWriter writer = new FileWriter(dictFile.toFile())) {
+            writer.write("герой\n");
+            writer.write("  книга  \n");
+            writer.write("\tстолб\t\n");
+            writer.write("трава\n");
+        }
 
-        assertTrue(dictionary.getWords().contains("слово"));
-        assertTrue(dictionary.getWords().contains("пять"));
-        assertTrue(dictionary.getWords().contains("дом"));
-    }
+        WordleDictionary dictionary = loader.loadDictionary(dictFile.toString());
 
-    @Test
-    void shouldHandleEmptyFile() throws IOException {
-        Files.write(dictFile, List.of());
-
-        WordleDictionary dictionary = WordleDictionaryLoader.workingWithFile(logWriter);
-
-        assertTrue(dictionary.getWords().isEmpty());
-    }
-
-    @Test
-    void shouldHandleFileWithOnlyInvalidWords() throws IOException {
-        Files.write(dictFile, List.of("кот", "дом", "лес"));
-
-        WordleDictionary dictionary = WordleDictionaryLoader.workingWithFile(logWriter);
-
-        assertTrue(dictionary.getWords().isEmpty());
+        org.junit.jupiter.api.Assertions.assertNotNull(dictionary);
+        org.junit.jupiter.api.Assertions.assertEquals(4, dictionary.size());
+        org.junit.jupiter.api.Assertions.assertTrue(dictionary.contains("герой"));
+        org.junit.jupiter.api.Assertions.assertTrue(dictionary.contains("книга"));
+        org.junit.jupiter.api.Assertions.assertTrue(dictionary.contains("столб"));
+        org.junit.jupiter.api.Assertions.assertTrue(dictionary.contains("трава"));
     }
 }

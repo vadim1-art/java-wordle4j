@@ -2,143 +2,156 @@ package ru.yandex.practicum;
 
 import java.io.PrintWriter;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
-import java.util.Random;
-import java.util.stream.Collectors;
+import java.util.Set;
+
 
 public class WordleGame {
+
     private String answer;
-    private int steps;
+    private int stepsLeft;
     private WordleDictionary dictionary;
-    private List<String> attempts;
-    private List<String> results;
+    private PrintWriter logger;
+
+    private List<String> guesses;
+    private List<String> guessPatterns;
+    private Set<Character> correctLetters;
+    private Set<Character> presentLetters;
+    private Set<Character> absentLetters;
+    private Set<String> usedHints;
+
     private boolean gameWon;
 
-    public WordleGame(String answer,
-                      int steps,
-                      WordleDictionary dictionary
-    ) {
-        this.answer = answer;
-        this.steps = steps;
+    public WordleGame(WordleDictionary dictionary, PrintWriter logger) {
         this.dictionary = dictionary;
-        this.attempts = new ArrayList<>();
-        this.results = new ArrayList<>();
+        this.logger = logger;
+        this.answer = dictionary.getRandomWord();
+        this.stepsLeft = 6;
+        this.guesses = new ArrayList<>();
+        this.guessPatterns = new ArrayList<>();
+        this.correctLetters = new HashSet<>();
+        this.presentLetters = new HashSet<>();
+        this.absentLetters = new HashSet<>();
+        this.usedHints = new HashSet<>();
         this.gameWon = false;
+
+        logger.println("Новая игра. Загадано слово: " + answer);
     }
 
-    public WordleGame(String answer,
-                      int steps,
-                      WordleDictionary dictionary,
-                      PrintWriter logWriter
-    ) {
-        this(answer, steps, dictionary);
-        // logWriter может использоваться для логирования, если нужно
-    }
-
-    public static String hintWord(String answer,
-                                  String pattern,
-                                  List<String> dictionary
-    ) {
-        List<Integer> dashPositions = new ArrayList<>();
-        for (int i = 0; i < pattern.length(); i++) {
-            if (pattern.charAt(i) == '-') {
-                dashPositions.add(i);
-            }
-        }
-
-        if (dashPositions.isEmpty()) {
-            return null;
-        }
-
-        System.out.println("Позиции с дефисом: " + dashPositions);
-
-        List<String> result = new ArrayList<>();
-
-        for (int position : dashPositions) {
-            char letter = answer.charAt(position);
-
-            List<String> wordsForPosition = dictionary.stream()
-                    .filter(word -> word.charAt(position) == letter)
-                    .filter(word -> !result.contains(word))
-                    .collect(Collectors.toList());
-
-            result.addAll(wordsForPosition);
-        }
-
-        if (result.isEmpty()) {
-            return null;
-        }
-
-        int randomIndex = new Random().nextInt(result.size());
-        return result.get(randomIndex);
-    }
-
-    public String wordTypeChanges(String word) {
-        if (word.length() != 5) {
-            throw new IllegalArgumentException("Слово должно быть длиной 5 символов");
-        }
-
-        StringBuilder result = new StringBuilder();
-        for (int i = 0; i < 5; i++) {
-            char c = word.charAt(i);
-            if (c == answer.charAt(i)) {
-                result.append("+");
-            } else if (answer.indexOf(c) != -1) {
-                result.append("^");
-            } else {
-                result.append("-");
-            }
-        }
-        return result.toString();
-    }
-
-    public void makeAttempt(String word, String result) {
-        attempts.add(word);
-        results.add(result);
-        steps--;
-
-        if (word.equals(answer)) {
-            gameWon = true;
-        }
-    }
-
-    public boolean isGameWon() {
-        return gameWon;
+    public int getStepsLeft() {
+        return stepsLeft;
     }
 
     public String getAnswer() {
         return answer;
     }
 
-    public int getSteps() {
-        return steps;
+    public boolean isGameOver() {
+        return stepsLeft == 0 || gameWon;
     }
 
-    public WordleDictionary getDictionary() {
-        return dictionary;
+    public boolean isGameWon() {
+        return gameWon;
     }
 
-    public List<String> getAttempts() {
-        return new ArrayList<>(attempts);
-    }
+    public GuessResult makeGuess(String guess) throws WordNotFoundInDictionaryException {
+        String normalizedGuess = WordleDictionary.normalizeWord(guess);
 
-    public List<String> getResults() {
-        return new ArrayList<>(results);
-    }
-
-    @Override
-    public String toString() {
-        StringBuilder sb = new StringBuilder();
-        sb.append("Попыток осталось: ").append(steps).append("\n");
-
-        if (!attempts.isEmpty()) {
-            sb.append("Ваши попытки:\n");
-            for (int i = 0; i < attempts.size(); i++) {
-                sb.append(i + 1).append(". ").append(attempts.get(i))
-                        .append(" - ").append(results.get(i)).append("\n");
-            }
+        if (!dictionary.contains(normalizedGuess)) {
+            throw new WordNotFoundInDictionaryException("Слово \"" + guess + "\" не найдено в словаре");
         }
 
-        return sb.toString();
+        stepsLeft--;
+
+        guesses.add(normalizedGuess);
+
+        String pattern = WordleDictionary.generatePattern(normalizedGuess, answer);
+        guessPatterns.add(pattern);
+
+        updateLetterSets(normalizedGuess, pattern);
+
+        if (normalizedGuess.equals(answer)) {
+            gameWon = true;
+        }
+
+        logger.println(String.format("Ход: %s -> %s (осталось попыток: %d)",
+                normalizedGuess, pattern, stepsLeft));
+
+        return new GuessResult(pattern, gameWon);
+    }
+
+    public String getHint() {
+        List<String> possibleWords = dictionary.filterWords(
+                correctLetters, presentLetters, absentLetters, getGuessedPatterns());
+
+        possibleWords.removeAll(guesses);
+        possibleWords.removeAll(usedHints);
+
+        if (possibleWords.isEmpty()) {
+            return null;
+        }
+
+        int randomIndex = (int) (Math.random() * possibleWords.size());
+        String hint = possibleWords.get(randomIndex);
+        usedHints.add(hint);
+
+        logger.println("Подсказка: " + hint);
+        return hint;
+    }
+
+    private void updateLetterSets(String guess, String pattern) {
+        for (int i = 0; i < 5; i++) {
+            char letter = guess.charAt(i);
+            char mark = pattern.charAt(i);
+
+            if (mark == '+') {
+                correctLetters.add(letter);
+                presentLetters.add(letter);
+                absentLetters.remove(letter);
+            } else if (mark == '^') {
+                presentLetters.add(letter);
+                absentLetters.remove(letter);
+            } else if (mark == '-') {
+                if (!presentLetters.contains(letter)) {
+                    absentLetters.add(letter);
+                }
+            }
+        }
+    }
+
+    private List<String> getGuessedPatterns() {
+        List<String> patterns = new ArrayList<>();
+        for (int i = 0; i < guesses.size(); i++) {
+            String guess = guesses.get(i);
+            String pattern = guessPatterns.get(i);
+
+            StringBuilder guessPattern = new StringBuilder("?????");
+            for (int j = 0; j < 5; j++) {
+                if (pattern.charAt(j) == '+') {
+                    guessPattern.setCharAt(j, guess.charAt(j));
+                }
+            }
+            patterns.add(guessPattern.toString());
+        }
+        return patterns;
+    }
+
+    public static class GuessResult {
+        private final String pattern;
+        private final boolean gameWon;
+
+        public GuessResult(String pattern, boolean gameWon) {
+            this.pattern = pattern;
+            this.gameWon = gameWon;
+        }
+
+        public String getPattern() {
+            return pattern;
+        }
+
+        public boolean isGameWon() {
+            return gameWon;
+        }
     }
 }
