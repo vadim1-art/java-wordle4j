@@ -1,11 +1,7 @@
 package ru.yandex.practicum;
 
 import java.io.PrintWriter;
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
-
+import java.util.*;
 
 public class WordleGame {
 
@@ -14,8 +10,6 @@ public class WordleGame {
     private WordleDictionary dictionary;
     private PrintWriter logger;
 
-    private List<String> guesses;
-    private List<String> guessPatterns;
     private Set<Character> correctLetters;
     private Set<Character> presentLetters;
     private Set<Character> absentLetters;
@@ -28,8 +22,6 @@ public class WordleGame {
         this.logger = logger;
         this.answer = dictionary.getRandomWord();
         this.stepsLeft = 6;
-        this.guesses = new ArrayList<>();
-        this.guessPatterns = new ArrayList<>();
         this.correctLetters = new HashSet<>();
         this.presentLetters = new HashSet<>();
         this.absentLetters = new HashSet<>();
@@ -64,11 +56,7 @@ public class WordleGame {
 
         stepsLeft--;
 
-        guesses.add(normalizedGuess);
-
         String pattern = WordleDictionary.generatePattern(normalizedGuess, answer);
-        guessPatterns.add(pattern);
-
         updateLetterSets(normalizedGuess, pattern);
 
         if (normalizedGuess.equals(answer)) {
@@ -82,22 +70,80 @@ public class WordleGame {
     }
 
     public String getHint() {
-        List<String> possibleWords = dictionary.filterWords(
-                correctLetters, presentLetters, absentLetters, getGuessedPatterns());
+        List<String> possibleWords = findPossibleWordsWithPositions();
 
-        possibleWords.removeAll(guesses);
         possibleWords.removeAll(usedHints);
 
         if (possibleWords.isEmpty()) {
+            logger.println("Подсказок больше нет");
             return null;
         }
 
-        int randomIndex = (int) (Math.random() * possibleWords.size());
-        String hint = possibleWords.get(randomIndex);
+        String hint = selectBestHintWord(possibleWords);
         usedHints.add(hint);
 
         logger.println("Подсказка: " + hint);
+        logger.println("Осталось возможных слов: " + possibleWords.size());
         return hint;
+    }
+
+    private List<String> findPossibleWordsWithPositions() {
+        List<String> allWords = dictionary.getWords();
+        List<String> possible = new ArrayList<>();
+
+        for (String word : allWords) {
+            if (isWordPossible(word)) {
+                possible.add(word);
+            }
+        }
+        return possible;
+    }
+
+    private boolean isWordPossible(String word) {
+        for (int i = 0; i < 5; i++) {
+            if (exactPositions.containsKey(i)) {
+                if (word.charAt(i) != exactPositions.get(i)) {
+                    return false;
+                }
+            }
+        }
+
+        for (char letter : presentLetters) {
+            if (word.indexOf(letter) == -1) {
+                return false;
+            }
+        }
+
+        for (char letter : absentLetters) {
+            if (word.indexOf(letter) != -1) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    private String selectBestHintWord(List<String> possibleWords) {
+        if (possibleWords.size() <= 3) {
+            return possibleWords.get(0);
+        }
+
+        String bestWord = null;
+        int maxUniqueLetters = 0;
+
+        for (String word : possibleWords) {
+            Set<Character> uniqueLetters = new HashSet<>();
+            for (char c : word.toCharArray()) {
+                uniqueLetters.add(c);
+            }
+
+            if (uniqueLetters.size() > maxUniqueLetters) {
+                maxUniqueLetters = uniqueLetters.size();
+                bestWord = word;
+            }
+        }
+
+        return bestWord;
     }
 
     private void updateLetterSets(String guess, String pattern) {
@@ -120,22 +166,7 @@ public class WordleGame {
         }
     }
 
-    private List<String> getGuessedPatterns() {
-        List<String> patterns = new ArrayList<>();
-        for (int i = 0; i < guesses.size(); i++) {
-            String guess = guesses.get(i);
-            String pattern = guessPatterns.get(i);
-
-            StringBuilder guessPattern = new StringBuilder("?????");
-            for (int j = 0; j < 5; j++) {
-                if (pattern.charAt(j) == '+') {
-                    guessPattern.setCharAt(j, guess.charAt(j));
-                }
-            }
-            patterns.add(guessPattern.toString());
-        }
-        return patterns;
-    }
+    private Map<Integer, Character> exactPositions;
 
     public static class GuessResult {
         private final String pattern;

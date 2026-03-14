@@ -3,6 +3,7 @@ package ru.yandex.practicum;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -15,6 +16,7 @@ public class Wordle {
 
     private static final String DICTIONARY_FILE = "words_ru.txt";
     private static final String LOG_FILE = "log-file.txt";
+    private static final int WORD_SIZE = 5;
     private static PrintWriter logger;
 
     public static void main(String[] args) {
@@ -59,12 +61,12 @@ public class Wordle {
     }
 
     private static void initializeLogger() throws IOException {
-        FileWriter fileWriter = new FileWriter(LOG_FILE, true);
+        FileWriter fileWriter = new FileWriter(LOG_FILE, StandardCharsets.UTF_8, true);
         logger = new PrintWriter(fileWriter, true);
     }
 
     private static void playGame(WordleGame game) {
-        try (Scanner scanner = new Scanner(System.in)) {
+        try (Scanner scanner = new Scanner(System.in, StandardCharsets.UTF_8)) {
             System.out.println("Добро пожаловать в игру Wordle!");
             System.out.println("Отгадайте слово из 5 букв. У вас " + game.getStepsLeft() + " попыток.");
             System.out.println("Если нужна подсказка, нажмите Enter (пустая строка)");
@@ -84,7 +86,7 @@ public class Wordle {
                         continue;
                     }
 
-                    if (input.length() != 5) {
+                    if (input.length() != WORD_SIZE) {
                         throw new InvalidWordLengthException("Слово должно состоять из 5 букв");
                     }
 
