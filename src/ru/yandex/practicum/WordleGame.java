@@ -166,6 +166,14 @@ public class WordleGame {
         }
     }
 
+    private List<String> getCurrentPatterns() {
+        List<String> patterns = new ArrayList<>();
+        StringBuilder pattern = new StringBuilder("?????");
+        patterns.add(pattern.toString());
+
+        return patterns;
+    }
+
     private Map<Integer, Character> exactPositions;
 
     public static class GuessResult {
