@@ -14,6 +14,7 @@ public class WordleGame {
     private Set<Character> presentLetters;
     private Set<Character> absentLetters;
     private Set<String> usedHints;
+    private Map<Integer, Character> exactPositions;
 
     private boolean gameWon;
 
@@ -27,6 +28,7 @@ public class WordleGame {
         this.absentLetters = new HashSet<>();
         this.usedHints = new HashSet<>();
         this.gameWon = false;
+        this.exactPositions = new HashMap<>();
 
         logger.println("Новая игра. Загадано слово: " + answer);
     }
@@ -155,9 +157,12 @@ public class WordleGame {
                 correctLetters.add(letter);
                 presentLetters.add(letter);
                 absentLetters.remove(letter);
+                exactPositions.put(i, letter);
+
             } else if (mark == '^') {
                 presentLetters.add(letter);
                 absentLetters.remove(letter);
+
             } else if (mark == '-') {
                 if (!presentLetters.contains(letter)) {
                     absentLetters.add(letter);
@@ -173,8 +178,6 @@ public class WordleGame {
 
         return patterns;
     }
-
-    private Map<Integer, Character> exactPositions;
 
     public static class GuessResult {
         private final String pattern;
